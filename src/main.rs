@@ -9,11 +9,15 @@ use clap::Parser;
 #[tokio::main]
 async fn main() {
     let args = cli::Args::parse();
-    executor::run_loop(args, |result| {
-        print!("{}", result.stdout);
-        if !result.stderr.is_empty() {
-            eprint!("{}", result.stderr);
-        }
-    })
-    .await;
+
+    tui::install_panic_hook();
+    let mut terminal = tui::init_terminal().expect("failed to initialize terminal");
+
+    let command = args.command.join(" ");
+    let state = app::AppState::new(command, args.interval);
+
+    let result = tui::run(&mut terminal, state);
+
+    tui::restore_terminal().expect("failed to restore terminal");
+    result.expect("tui error");
 }
