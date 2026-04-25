@@ -77,7 +77,7 @@ No `mpsc` channel — the TUI reads state on every 100ms tick, so a mutex is sim
 - [x] 6. Minimal TUI loop with clean exit + panic hook (`tui.rs`)
 - [x] 7. Wire executor to TUI — tool is functionally complete
 - [x] 8. Header rendering (`--no-title`)
-- [ ] 9. Diff highlighting (`--differences`)
+- [x] 9. Diff highlighting (`--differences`)
 - [ ] 10. ANSI color support (`--color`)
 - [ ] 11. Scrolling + auto-scroll-to-bottom
 - [ ] 12. `--errexit` via `CancellationToken`

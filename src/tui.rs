@@ -19,6 +19,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::app::AppState;
 use crate::cli::Args;
+use crate::diff::DiffLineKind;
 
 pub fn install_panic_hook() {
     let original = panic::take_hook();
@@ -84,7 +85,7 @@ fn render(frame: &mut ratatui::Frame, state: &AppState, args: &Args) {
         render_header(frame, state, ha);
     }
 
-    render_output(frame, state, output_area);
+    render_output(frame, state, args, output_area);
 }
 
 fn render_header(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::layout::Rect) {
@@ -103,11 +104,22 @@ fn render_header(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::la
     frame.render_widget(header, area);
 }
 
-fn render_output(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::layout::Rect) {
+fn render_output(frame: &mut ratatui::Frame, state: &AppState, args: &Args, area: ratatui::layout::Rect) {
     let lines: Vec<Line> = state
         .diff_lines
         .iter()
-        .map(|dl| Line::from(Span::raw(dl.content.clone())))
+        .map(|dl| {
+            let style = if args.differences {
+                match dl.kind {
+                    DiffLineKind::Added => Style::default().fg(Color::Black).bg(Color::Green),
+                    DiffLineKind::Removed => Style::default().fg(Color::Black).bg(Color::Red),
+                    DiffLineKind::Same => Style::default(),
+                }
+            } else {
+                Style::default()
+            };
+            Line::from(Span::styled(dl.content.clone(), style))
+        })
         .collect();
 
     let paragraph = Paragraph::new(lines)
