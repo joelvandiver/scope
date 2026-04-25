@@ -70,7 +70,7 @@ No `mpsc` channel — the TUI reads state on every 100ms tick, so a mutex is sim
 ### Implementation Order
 
 - [x] 1. Project scaffold + `Cargo.toml`
-- [ ] 2. CLI parsing (`cli.rs`)
+- [x] 2. CLI parsing (`cli.rs`)
 - [ ] 3. Command execution loop without TUI (`executor.rs`)
 - [ ] 4. Diff computation with unit tests (`diff.rs`)
 - [ ] 5. `AppState` struct (`app.rs`)

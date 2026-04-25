@@ -4,6 +4,9 @@ mod diff;
 mod executor;
 mod tui;
 
+use clap::Parser;
+
 fn main() {
-    println!("scope");
+    let args = cli::Args::parse();
+    println!("{args:?}");
 }
