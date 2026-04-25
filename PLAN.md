@@ -80,5 +80,5 @@ No `mpsc` channel — the TUI reads state on every 100ms tick, so a mutex is sim
 - [x] 9. Diff highlighting (`--differences`)
 - [x] 10. ANSI color support (`--color`)
 - [x] 11. Scrolling + auto-scroll-to-bottom
-- [ ] 12. `--errexit` via `CancellationToken`
+- [x] 12. `--errexit` via `CancellationToken`
 - [ ] 13. Edge cases (no output, resize, unicode, binary)

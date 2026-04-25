@@ -54,6 +54,10 @@ pub fn run(
             render(frame, &mut state, args);
         })?;
 
+        if cancel.is_cancelled() {
+            return Ok(());
+        }
+
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 let mut state = state.lock().unwrap();

@@ -56,6 +56,11 @@ pub async fn run_loop(args: Args, state: Arc<Mutex<AppState>>, cancel: Cancellat
             s.update(lines, diff_lines, exit_code, error);
         }
 
+        if args.errexit && exit_code.is_some_and(|c| c != 0) {
+            cancel.cancel();
+            return;
+        }
+
         previous_output = output;
 
         let sleep_duration = if args.precise {
