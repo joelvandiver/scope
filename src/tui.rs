@@ -3,6 +3,7 @@ use std::panic;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use ansi_to_tui::IntoText;
 use chrono::Local;
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use crossterm::terminal::{
@@ -16,8 +17,6 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Terminal;
 use tokio_util::sync::CancellationToken;
-
-use ansi_to_tui::IntoText;
 
 use crate::app::AppState;
 use crate::cli::Args;
@@ -51,18 +50,25 @@ pub fn run(
 ) -> io::Result<()> {
     loop {
         terminal.draw(|frame| {
-            let state = state.lock().unwrap();
-            render(frame, &state, args);
+            let mut state = state.lock().unwrap();
+            render(frame, &mut state, args);
         })?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
+                let mut state = state.lock().unwrap();
                 match (key.code, key.modifiers) {
                     (KeyCode::Char('q'), _)
                     | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                         cancel.cancel();
                         return Ok(());
                     }
+                    (KeyCode::Char('j'), _) | (KeyCode::Down, _) => state.scroll_down(1),
+                    (KeyCode::Char('k'), _) | (KeyCode::Up, _) => state.scroll_up(1),
+                    (KeyCode::Char('d'), _) => { let h = state.viewport_height / 2; state.scroll_down(h); }
+                    (KeyCode::Char('u'), _) => { let h = state.viewport_height / 2; state.scroll_up(h); }
+                    (KeyCode::Char('g'), _) | (KeyCode::Home, _) => state.scroll_top(),
+                    (KeyCode::Char('G'), _) | (KeyCode::End, _) => state.scroll_bottom(),
                     _ => {}
                 }
             }
@@ -70,7 +76,7 @@ pub fn run(
     }
 }
 
-fn render(frame: &mut ratatui::Frame, state: &AppState, args: &Args) {
+fn render(frame: &mut ratatui::Frame, state: &mut AppState, args: &Args) {
     let area = frame.area();
 
     let (header_area, output_area) = if args.no_title {
@@ -86,6 +92,9 @@ fn render(frame: &mut ratatui::Frame, state: &AppState, args: &Args) {
     if let Some(ha) = header_area {
         render_header(frame, state, ha);
     }
+
+    // Update viewport height so scroll methods can clamp correctly.
+    state.viewport_height = output_area.height;
 
     render_output(frame, state, args, output_area);
 }

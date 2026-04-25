@@ -15,6 +15,8 @@ pub struct AppState {
     pub diff_lines: Vec<DiffLine>,
     pub error: Option<String>,
     pub scroll_offset: u16,
+    pub auto_scroll: bool,
+    pub viewport_height: u16,
 }
 
 impl AppState {
@@ -30,6 +32,8 @@ impl AppState {
             diff_lines: Vec::new(),
             error: None,
             scroll_offset: 0,
+            auto_scroll: false,
+            viewport_height: 0,
         }))
     }
 
@@ -46,5 +50,33 @@ impl AppState {
         self.error = error;
         self.run_count += 1;
         self.last_run = Some(SystemTime::now());
+
+        if self.auto_scroll {
+            self.scroll_offset = self.max_scroll();
+        }
+    }
+
+    pub fn max_scroll(&self) -> u16 {
+        (self.current_output.len() as u16).saturating_sub(self.viewport_height)
+    }
+
+    pub fn scroll_up(&mut self, amount: u16) {
+        self.auto_scroll = false;
+        self.scroll_offset = self.scroll_offset.saturating_sub(amount);
+    }
+
+    pub fn scroll_down(&mut self, amount: u16) {
+        self.auto_scroll = false;
+        self.scroll_offset = self.scroll_offset.saturating_add(amount).min(self.max_scroll());
+    }
+
+    pub fn scroll_top(&mut self) {
+        self.auto_scroll = false;
+        self.scroll_offset = 0;
+    }
+
+    pub fn scroll_bottom(&mut self) {
+        self.auto_scroll = true;
+        self.scroll_offset = self.max_scroll();
     }
 }
