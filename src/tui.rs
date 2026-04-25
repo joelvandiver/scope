@@ -17,9 +17,11 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Terminal;
 use tokio_util::sync::CancellationToken;
 
+use ansi_to_tui::IntoText;
+
 use crate::app::AppState;
 use crate::cli::Args;
-use crate::diff::DiffLineKind;
+use crate::diff::{DiffLine, DiffLineKind};
 
 pub fn install_panic_hook() {
     let original = panic::take_hook();
@@ -104,22 +106,36 @@ fn render_header(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::la
     frame.render_widget(header, area);
 }
 
+fn diff_line_to_tui<'a>(dl: &'a DiffLine, args: &Args) -> Line<'a> {
+    // Diff highlighting takes priority over ANSI color for changed lines.
+    if args.differences {
+        let style = match dl.kind {
+            DiffLineKind::Added => Style::default().fg(Color::Black).bg(Color::Green),
+            DiffLineKind::Removed => Style::default().fg(Color::Black).bg(Color::Red),
+            DiffLineKind::Same => Style::default(),
+        };
+        if style != Style::default() {
+            return Line::from(Span::styled(dl.content.clone(), style));
+        }
+    }
+
+    // For unchanged lines (or when -d is off), parse ANSI codes if -c is set.
+    if args.color {
+        if let Ok(text) = dl.content.as_str().into_text() {
+            if let Some(line) = text.lines.into_iter().next() {
+                return line;
+            }
+        }
+    }
+
+    Line::from(Span::raw(dl.content.clone()))
+}
+
 fn render_output(frame: &mut ratatui::Frame, state: &AppState, args: &Args, area: ratatui::layout::Rect) {
     let lines: Vec<Line> = state
         .diff_lines
         .iter()
-        .map(|dl| {
-            let style = if args.differences {
-                match dl.kind {
-                    DiffLineKind::Added => Style::default().fg(Color::Black).bg(Color::Green),
-                    DiffLineKind::Removed => Style::default().fg(Color::Black).bg(Color::Red),
-                    DiffLineKind::Same => Style::default(),
-                }
-            } else {
-                Style::default()
-            };
-            Line::from(Span::styled(dl.content.clone(), style))
-        })
+        .map(|dl| diff_line_to_tui(dl, args))
         .collect();
 
     let paragraph = Paragraph::new(lines)
