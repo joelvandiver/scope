@@ -5,6 +5,7 @@ mod executor;
 mod tui;
 
 use clap::Parser;
+use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() {
@@ -15,8 +16,16 @@ async fn main() {
 
     let command = args.command.join(" ");
     let state = app::AppState::new(command, args.interval);
+    let cancel = CancellationToken::new();
 
-    let result = tui::run(&mut terminal, state);
+    let exec_state = state.clone();
+    let exec_cancel = cancel.clone();
+    let exec_args = args.clone();
+    tokio::spawn(async move {
+        executor::run_loop(exec_args, exec_state, exec_cancel).await;
+    });
+
+    let result = tui::run(&mut terminal, state, cancel);
 
     tui::restore_terminal().expect("failed to restore terminal");
     result.expect("tui error");

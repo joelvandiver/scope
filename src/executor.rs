@@ -1,16 +1,15 @@
 use std::process::Stdio;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
 use tokio::process::Command;
+use tokio_util::sync::CancellationToken;
 
+use crate::app::AppState;
 use crate::cli::Args;
+use crate::diff;
 
-pub struct ExecResult {
-    pub stdout: String,
-    pub stderr: String,
-    pub exit_code: Option<i32>,
-}
-
-pub async fn run_command(args: &Args) -> ExecResult {
+async fn run_command(args: &Args) -> (String, Option<i32>, Option<String>) {
     let mut cmd = if args.exec {
         let mut c = Command::new(&args.command[0]);
         c.args(&args.command[1..]);
@@ -25,26 +24,39 @@ pub async fn run_command(args: &Args) -> ExecResult {
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     match cmd.output().await {
-        Ok(output) => ExecResult {
-            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-            exit_code: output.status.code(),
-        },
-        Err(e) => ExecResult {
-            stdout: String::new(),
-            stderr: format!("scope: error running command: {e}"),
-            exit_code: None,
-        },
+        Ok(output) => {
+            let mut combined = String::from_utf8_lossy(&output.stdout).into_owned();
+            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+            if !stderr.is_empty() {
+                combined.push_str(&stderr);
+            }
+            (combined, output.status.code(), None)
+        }
+        Err(e) => (
+            String::new(),
+            None,
+            Some(format!("scope: error running command: {e}")),
+        ),
     }
 }
 
-pub async fn run_loop(args: Args, mut on_result: impl FnMut(ExecResult)) {
+pub async fn run_loop(args: Args, state: Arc<Mutex<AppState>>, cancel: CancellationToken) {
     let interval = Duration::from_secs_f64(args.interval);
+    let mut previous_output = String::new();
 
     loop {
         let start = Instant::now();
-        let result = run_command(&args).await;
-        on_result(result);
+        let (output, exit_code, error) = run_command(&args).await;
+
+        let diff_lines = diff::compute(&previous_output, &output);
+        let lines: Vec<String> = output.lines().map(str::to_string).collect();
+
+        {
+            let mut s = state.lock().unwrap();
+            s.update(lines, diff_lines, exit_code, error);
+        }
+
+        previous_output = output;
 
         let sleep_duration = if args.precise {
             interval.saturating_sub(start.elapsed())
@@ -52,6 +64,9 @@ pub async fn run_loop(args: Args, mut on_result: impl FnMut(ExecResult)) {
             interval
         };
 
-        tokio::time::sleep(sleep_duration).await;
+        tokio::select! {
+            _ = tokio::time::sleep(sleep_duration) => {}
+            _ = cancel.cancelled() => return,
+        }
     }
 }

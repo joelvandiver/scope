@@ -11,3 +11,4 @@ clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 similar = "2"
 ansi-to-tui = "7"
+tokio-util = { version = "0.7", features = ["rt"] }

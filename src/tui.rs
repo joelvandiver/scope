@@ -9,7 +9,10 @@ use crossterm::terminal::{
 };
 use crossterm::ExecutableCommand;
 use ratatui::backend::CrosstermBackend;
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Paragraph};
 use ratatui::Terminal;
+use tokio_util::sync::CancellationToken;
 
 use crate::app::AppState;
 
@@ -36,18 +39,22 @@ pub fn restore_terminal() -> io::Result<()> {
 pub fn run(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     state: Arc<Mutex<AppState>>,
+    cancel: CancellationToken,
 ) -> io::Result<()> {
     loop {
         terminal.draw(|frame| {
             let state = state.lock().unwrap();
-            crate::tui::render(frame, &state);
+            render(frame, &state);
         })?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 match (key.code, key.modifiers) {
                     (KeyCode::Char('q'), _)
-                    | (KeyCode::Char('c'), KeyModifiers::CONTROL) => return Ok(()),
+                    | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                        cancel.cancel();
+                        return Ok(());
+                    }
                     _ => {}
                 }
             }
@@ -55,8 +62,18 @@ pub fn run(
     }
 }
 
-fn render(frame: &mut ratatui::Frame, _state: &AppState) {
-    use ratatui::widgets::{Block, Borders};
+fn render(frame: &mut ratatui::Frame, state: &AppState) {
     let area = frame.area();
-    frame.render_widget(Block::default().borders(Borders::ALL).title("scope"), area);
+
+    let lines: Vec<Line> = state
+        .diff_lines
+        .iter()
+        .map(|dl| Line::from(Span::raw(dl.content.clone())))
+        .collect();
+
+    let paragraph = Paragraph::new(lines)
+        .block(Block::default())
+        .scroll((state.scroll_offset, 0));
+
+    frame.render_widget(paragraph, area);
 }

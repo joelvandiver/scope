@@ -75,7 +75,7 @@ No `mpsc` channel — the TUI reads state on every 100ms tick, so a mutex is sim
 - [x] 4. Diff computation with unit tests (`diff.rs`)
 - [x] 5. `AppState` struct (`app.rs`)
 - [x] 6. Minimal TUI loop with clean exit + panic hook (`tui.rs`)
-- [ ] 7. Wire executor to TUI — tool is functionally complete
+- [x] 7. Wire executor to TUI — tool is functionally complete
 - [ ] 8. Header rendering (`--no-title`)
 - [ ] 9. Diff highlighting (`--differences`)
 - [ ] 10. ANSI color support (`--color`)
