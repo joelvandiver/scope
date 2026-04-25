@@ -19,7 +19,6 @@ scope [OPTIONS] <COMMAND>...
 | Flag           | Default | Description                                             |
 | -------------- | ------- | ------------------------------------------------------- |
 | `-n <seconds>` | `2.0`   | Interval between runs                                   |
-| `-d`           | off     | Highlight differences between runs                      |
 | `-t`           | off     | Hide header                                             |
 | `-c`           | off     | Interpret ANSI color codes                              |
 | `-e`           | off     | Exit on non-zero exit code                              |
@@ -44,8 +43,8 @@ scope [OPTIONS] <COMMAND>...
 # Watch directory contents every 2 seconds
 scope ls -la
 
-# Highlight changes, update every 5 seconds
-scope -d -n 5 cat /proc/meminfo
+# Update every 5 seconds
+scope -n 5 cat /proc/meminfo
 
 # Preserve color output
 scope -c -- ls --color=always

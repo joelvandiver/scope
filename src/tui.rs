@@ -21,7 +21,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::app::AppState;
 use crate::cli::Args;
-use crate::diff::{DiffLine, DiffLineKind};
+use crate::diff::DiffLine;
 
 pub fn install_panic_hook() {
     let original = panic::take_hook();
@@ -202,28 +202,34 @@ fn render_status(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::la
 }
 
 fn diff_line_to_tui<'a>(dl: &'a DiffLine, args: &Args) -> Line<'a> {
-    // Diff highlighting takes priority over ANSI color for changed lines.
-    if args.differences {
-        let style = match dl.kind {
-            DiffLineKind::Added => Style::default().fg(Color::Black).bg(Color::Green),
-            DiffLineKind::Removed => Style::default().fg(Color::Black).bg(Color::Red),
-            DiffLineKind::Same => Style::default(),
-        };
-        if style != Style::default() {
-            return Line::from(Span::styled(dl.content.clone(), style));
-        }
-    }
-
-    // For unchanged lines (or when -d is off), parse ANSI codes if -c is set.
-    if args.color {
-        if let Ok(text) = dl.content.as_str().into_text() {
-            if let Some(line) = text.lines.into_iter().next() {
-                return line;
+    match dl {
+        DiffLine::Same(content) => {
+            if args.color {
+                if let Ok(text) = content.as_str().into_text() {
+                    if let Some(line) = text.lines.into_iter().next() {
+                        return line;
+                    }
+                }
             }
+            Line::from(Span::raw(content.clone()))
+        }
+        DiffLine::Changed(spans) => {
+            let tui_spans: Vec<Span> = spans
+                .iter()
+                .map(|s| {
+                    if s.changed {
+                        Span::styled(
+                            s.content.clone(),
+                            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                        )
+                    } else {
+                        Span::raw(s.content.clone())
+                    }
+                })
+                .collect();
+            Line::from(tui_spans)
         }
     }
-
-    Line::from(Span::raw(dl.content.clone()))
 }
 
 fn render_output(

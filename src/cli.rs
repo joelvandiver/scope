@@ -7,10 +7,6 @@ pub struct Args {
     #[arg(short = 'n', long, default_value = "2.0", value_name = "seconds")]
     pub interval: f64,
 
-    /// Highlight differences between updates
-    #[arg(short = 'd', long)]
-    pub differences: bool,
-
     /// Hide the header
     #[arg(short = 't', long)]
     pub no_title: bool,
