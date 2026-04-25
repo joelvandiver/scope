@@ -6,7 +6,14 @@ mod tui;
 
 use clap::Parser;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = cli::Args::parse();
-    println!("{args:?}");
+    executor::run_loop(args, |result| {
+        print!("{}", result.stdout);
+        if !result.stderr.is_empty() {
+            eprint!("{}", result.stderr);
+        }
+    })
+    .await;
 }
