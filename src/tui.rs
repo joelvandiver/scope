@@ -17,6 +17,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Terminal;
 use tokio_util::sync::CancellationToken;
+use unicode_width::UnicodeWidthStr;
 
 use crate::app::AppState;
 use crate::cli::Args;
@@ -59,22 +60,42 @@ pub fn run(
         }
 
         if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                let mut state = state.lock().unwrap();
-                match (key.code, key.modifiers) {
-                    (KeyCode::Char('q'), _)
-                    | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                        cancel.cancel();
-                        return Ok(());
+            match event::read()? {
+                Event::Key(key) => {
+                    let mut state = state.lock().unwrap();
+                    match (key.code, key.modifiers) {
+                        (KeyCode::Char('q'), _)
+                        | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                            cancel.cancel();
+                            return Ok(());
+                        }
+                        (KeyCode::Char('j'), _) | (KeyCode::Down, _) => state.scroll_down(1),
+                        (KeyCode::Char('k'), _) | (KeyCode::Up, _) => state.scroll_up(1),
+                        (KeyCode::Char('d'), _) => {
+                            let h = state.viewport_height / 2;
+                            state.scroll_down(h);
+                        }
+                        (KeyCode::Char('u'), _) => {
+                            let h = state.viewport_height / 2;
+                            state.scroll_up(h);
+                        }
+                        (KeyCode::Char('g'), _) | (KeyCode::Home, _) => state.scroll_top(),
+                        (KeyCode::Char('G'), _) | (KeyCode::End, _) => state.scroll_bottom(),
+                        _ => {}
                     }
-                    (KeyCode::Char('j'), _) | (KeyCode::Down, _) => state.scroll_down(1),
-                    (KeyCode::Char('k'), _) | (KeyCode::Up, _) => state.scroll_up(1),
-                    (KeyCode::Char('d'), _) => { let h = state.viewport_height / 2; state.scroll_down(h); }
-                    (KeyCode::Char('u'), _) => { let h = state.viewport_height / 2; state.scroll_up(h); }
-                    (KeyCode::Char('g'), _) | (KeyCode::Home, _) => state.scroll_top(),
-                    (KeyCode::Char('G'), _) | (KeyCode::End, _) => state.scroll_bottom(),
-                    _ => {}
                 }
+                Event::Resize(_, _) => {
+                    // terminal.draw() calls autoresize() internally, so the next
+                    // frame will use the new dimensions. Clamp scroll so it stays
+                    // within bounds after the resize.
+                    terminal.autoresize()?;
+                    let mut state = state.lock().unwrap();
+                    let max = state.max_scroll();
+                    if state.scroll_offset > max {
+                        state.scroll_offset = max;
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -109,7 +130,7 @@ fn render_header(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::la
     let right = format!("{}: {}", state.hostname, now);
 
     let width = area.width as usize;
-    let padding = width.saturating_sub(left.len() + right.len());
+    let padding = width.saturating_sub(left.width() + right.width());
     let header_text = format!("{}{}{}", left, " ".repeat(padding), right);
 
     let header = Paragraph::new(header_text)
@@ -144,12 +165,24 @@ fn diff_line_to_tui<'a>(dl: &'a DiffLine, args: &Args) -> Line<'a> {
     Line::from(Span::raw(dl.content.clone()))
 }
 
-fn render_output(frame: &mut ratatui::Frame, state: &AppState, args: &Args, area: ratatui::layout::Rect) {
-    let lines: Vec<Line> = state
-        .diff_lines
-        .iter()
-        .map(|dl| diff_line_to_tui(dl, args))
-        .collect();
+fn render_output(
+    frame: &mut ratatui::Frame,
+    state: &AppState,
+    args: &Args,
+    area: ratatui::layout::Rect,
+) {
+    let lines: Vec<Line> = if let Some(err) = &state.error {
+        vec![Line::from(Span::styled(
+            err.clone(),
+            Style::default().fg(Color::Red),
+        ))]
+    } else {
+        state
+            .diff_lines
+            .iter()
+            .map(|dl| diff_line_to_tui(dl, args))
+            .collect()
+    };
 
     let paragraph = Paragraph::new(lines)
         .block(Block::default())

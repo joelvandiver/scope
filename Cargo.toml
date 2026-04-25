@@ -13,3 +13,4 @@ similar = "2"
 ansi-to-tui = "7"
 tokio-util = { version = "0.7", features = ["rt"] }
 chrono = "0.4"
+unicode-width = "0.2"
