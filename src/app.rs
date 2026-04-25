@@ -7,6 +7,7 @@ use crate::diff::DiffLine;
 pub struct AppState {
     pub command: String,
     pub interval: f64,
+    pub hostname: String,
     pub run_count: u64,
     pub last_run: Option<SystemTime>,
     pub exit_code: Option<i32>,
@@ -14,14 +15,14 @@ pub struct AppState {
     pub diff_lines: Vec<DiffLine>,
     pub error: Option<String>,
     pub scroll_offset: u16,
-    pub auto_scroll: bool,
 }
 
 impl AppState {
-    pub fn new(command: String, interval: f64) -> Arc<Mutex<Self>> {
+    pub fn new(command: String, interval: f64, hostname: String) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             command,
             interval,
+            hostname,
             run_count: 0,
             last_run: None,
             exit_code: None,
@@ -29,7 +30,6 @@ impl AppState {
             diff_lines: Vec::new(),
             error: None,
             scroll_offset: 0,
-            auto_scroll: true,
         }))
     }
 
@@ -46,9 +46,5 @@ impl AppState {
         self.error = error;
         self.run_count += 1;
         self.last_run = Some(SystemTime::now());
-
-        if self.auto_scroll {
-            self.scroll_offset = self.current_output.len().saturating_sub(1) as u16;
-        }
     }
 }
