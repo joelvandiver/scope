@@ -42,13 +42,16 @@ async fn run_command(args: &Args) -> (String, Option<i32>, Option<String>) {
 
 pub async fn run_loop(args: Args, state: Arc<Mutex<AppState>>, cancel: CancellationToken) {
     let interval = Duration::from_secs_f64(args.interval);
-    let mut previous_output = String::new();
+    let mut previous_output: Option<String> = None;
 
     loop {
         let start = Instant::now();
         let (output, exit_code, error) = run_command(&args).await;
 
-        let diff_lines = diff::compute(&previous_output, &output);
+        let diff_lines = match &previous_output {
+            None => output.lines().map(|l| diff::DiffLine::Same(l.to_string())).collect(),
+            Some(prev) => diff::compute(prev, &output),
+        };
         let lines: Vec<String> = output.lines().map(str::to_string).collect();
 
         {
@@ -61,7 +64,7 @@ pub async fn run_loop(args: Args, state: Arc<Mutex<AppState>>, cancel: Cancellat
             return;
         }
 
-        previous_output = output;
+        previous_output = Some(output);
 
         let sleep_duration = if args.precise {
             interval.saturating_sub(start.elapsed())
