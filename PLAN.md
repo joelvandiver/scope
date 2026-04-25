@@ -72,7 +72,7 @@ No `mpsc` channel — the TUI reads state on every 100ms tick, so a mutex is sim
 - [x] 1. Project scaffold + `Cargo.toml`
 - [x] 2. CLI parsing (`cli.rs`)
 - [x] 3. Command execution loop without TUI (`executor.rs`)
-- [ ] 4. Diff computation with unit tests (`diff.rs`)
+- [x] 4. Diff computation with unit tests (`diff.rs`)
 - [ ] 5. `AppState` struct (`app.rs`)
 - [ ] 6. Minimal TUI loop with clean exit + panic hook (`tui.rs`)
 - [ ] 7. Wire executor to TUI — tool is functionally complete
