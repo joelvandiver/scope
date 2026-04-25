@@ -28,13 +28,15 @@ scope [OPTIONS] <COMMAND>...
 
 ### Key Bindings
 
-| Key            | Action           |
-| -------------- | ---------------- |
-| `q` / `Ctrl+C` | Quit             |
-| `j` / `↓`      | Scroll down      |
-| `k` / `↑`      | Scroll up        |
-| `g`            | Scroll to top    |
-| `G`            | Scroll to bottom |
+| Key            | Action                               |
+| -------------- | ------------------------------------ |
+| `q` / `Ctrl+C` | Quit                                 |
+| `j` / `↓`      | Scroll down one line                 |
+| `k` / `↑`      | Scroll up one line                   |
+| `d`            | Scroll down half page                |
+| `u`            | Scroll up half page                  |
+| `g` / `Home`   | Scroll to top                        |
+| `G` / `End`    | Scroll to bottom (enables tracking)  |
 
 ## Examples
 
