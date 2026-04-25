@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  scope)
+    shift
+    cargo run -- "$@"
+    ;;
+  *)
+    echo "Usage: ./run <command>"
+    echo "Commands:"
+    echo "  scope [ARGS]  Run scope via cargo run"
+    exit 1
+    ;;
+esac
