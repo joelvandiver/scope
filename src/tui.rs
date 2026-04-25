@@ -85,9 +85,6 @@ pub fn run(
                     }
                 }
                 Event::Resize(_, _) => {
-                    // terminal.draw() calls autoresize() internally, so the next
-                    // frame will use the new dimensions. Clamp scroll so it stays
-                    // within bounds after the resize.
                     terminal.autoresize()?;
                     let mut state = state.lock().unwrap();
                     let max = state.max_scroll();
@@ -104,24 +101,30 @@ pub fn run(
 fn render(frame: &mut ratatui::Frame, state: &mut AppState, args: &Args) {
     let area = frame.area();
 
-    let (header_area, output_area) = if args.no_title {
-        (None, area)
+    let constraints = if args.no_title {
+        vec![Constraint::Min(0), Constraint::Length(1)]
     } else {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(2), Constraint::Min(0)])
-            .split(area);
-        (Some(chunks[0]), chunks[1])
+        vec![Constraint::Length(2), Constraint::Min(0), Constraint::Length(1)]
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(constraints)
+        .split(area);
+
+    let (header_area, output_area, status_area) = if args.no_title {
+        (None, chunks[0], chunks[1])
+    } else {
+        (Some(chunks[0]), chunks[1], chunks[2])
     };
 
     if let Some(ha) = header_area {
         render_header(frame, state, ha);
     }
 
-    // Update viewport height so scroll methods can clamp correctly.
     state.viewport_height = output_area.height;
-
     render_output(frame, state, args, output_area);
+    render_status(frame, state, status_area);
 }
 
 fn render_header(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::layout::Rect) {
@@ -138,6 +141,64 @@ fn render_header(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::la
         .block(Block::default().borders(Borders::BOTTOM));
 
     frame.render_widget(header, area);
+}
+
+fn render_status(frame: &mut ratatui::Frame, state: &AppState, area: ratatui::layout::Rect) {
+    let dim = Style::default().fg(Color::DarkGray);
+    let bold = Style::default().add_modifier(Modifier::BOLD);
+
+    // Left side: run counter + exit code
+    let mut left_spans = vec![
+        Span::styled("  run ", dim),
+        Span::styled(format!("#{}", state.run_count), bold),
+    ];
+
+    if let Some(code) = state.exit_code {
+        let (label, style) = if code == 0 {
+            ("  ok", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+        } else {
+            ("  err", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+        };
+        left_spans.push(Span::styled(label, style));
+        if code != 0 {
+            left_spans.push(Span::styled(format!(" ({})", code), Style::default().fg(Color::Red)));
+        }
+    }
+
+    // Right side: scroll state
+    let scroll_indicator = if state.run_count == 0 {
+        String::new()
+    } else if state.auto_scroll {
+        "tracking ↓  ".to_string()
+    } else {
+        let pct = if state.max_scroll() == 0 {
+            100
+        } else {
+            (state.scroll_offset as usize * 100) / state.max_scroll() as usize
+        };
+        format!("{}%  ", pct)
+    };
+
+    let left_line = Line::from(left_spans);
+    let right_line = Line::from(Span::styled(scroll_indicator, dim));
+
+    let status_style = Style::default().bg(Color::Rgb(30, 30, 30));
+
+    // Render left-aligned
+    frame.render_widget(
+        Paragraph::new(left_line)
+            .style(status_style)
+            .block(Block::default().borders(Borders::TOP)),
+        area,
+    );
+    // Render right-aligned on top (same area)
+    frame.render_widget(
+        Paragraph::new(right_line)
+            .style(status_style)
+            .alignment(ratatui::layout::Alignment::Right)
+            .block(Block::default().borders(Borders::TOP)),
+        area,
+    );
 }
 
 fn diff_line_to_tui<'a>(dl: &'a DiffLine, args: &Args) -> Line<'a> {
@@ -175,6 +236,11 @@ fn render_output(
         vec![Line::from(Span::styled(
             err.clone(),
             Style::default().fg(Color::Red),
+        ))]
+    } else if state.run_count == 0 {
+        vec![Line::from(Span::styled(
+            "Waiting for first run…",
+            Style::default().fg(Color::DarkGray),
         ))]
     } else {
         state
