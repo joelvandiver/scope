@@ -4,6 +4,7 @@ help=$(cat << EOF
 usage [run <command>]
 watch   start tests in watch mode
 ci      run ci commands
+scope   run app
 EOF
 )
 
@@ -17,6 +18,9 @@ case "$cmd" in
         cargo fmt --all
         cargo clippy --workspace --all-targets -- -D warnings
         cargo test --workspace
+        ;;
+    scope)
+        cargo run -- "$@"
         ;;
     *) echo "$help"
 esac
