@@ -8,8 +8,8 @@ Work top-to-bottom; use `/dev-workflow:next` to pick up the next task.
 ## M0 — Cargo scaffold proven by CI
 
 - [x] Red: `tests/smoke.rs::binary_prints_usage_without_args` (via `assert_cmd`) — committed in `f45a46e`, both smoke tests confirmed failing for the right reason (also added `help_flag_mentions_interval_option`)
-- [ ] Green: `cargo init` binary crate with `lib.rs`/`main.rs` split; clap args: `command: Vec<String>`, `--interval/-n` (default 2.0s)
-- [ ] CI: confirm the Test step actually runs the new test (no longer trivially green)
+- [x] Green: `cargo init` binary crate with `lib.rs`/`main.rs` split; clap args: `command: Vec<String>`, `--interval/-n` (default 2.0s)
+- [x] CI: confirm the Test step actually runs the new test (no longer trivially green)
 - [ ] Document: commit message with what/why + test evidence
 
 ## M1 — Command runner + Snapshot model
